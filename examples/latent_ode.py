@@ -15,11 +15,11 @@ import torch.nn.functional as F
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--adjoint', type=eval, default=False)
-parser.add_argument('--visualize', type=eval, default=False)
+parser.add_argument('--visualize', type=eval, default=True)
 parser.add_argument('--niters', type=int, default=2000)
 parser.add_argument('--lr', type=float, default=0.01)
 parser.add_argument('--gpu', type=int, default=0)
-parser.add_argument('--train_dir', type=str, default=None)
+parser.add_argument('--train_dir', type=str, default='/root/workspace/ODE/LatentODE/dataset')
 args = parser.parse_args()
 
 if args.adjoint:
@@ -276,6 +276,7 @@ if __name__ == '__main__':
             loss_meter.update(loss.item())
 
             print('Iter: {}, running avg elbo: {:.4f}'.format(itr, -loss_meter.avg))
+
 
     except KeyboardInterrupt:
         if args.train_dir is not None:
