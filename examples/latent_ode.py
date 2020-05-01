@@ -277,6 +277,50 @@ if __name__ == '__main__':
 
             print('Iter: {}, running avg elbo: {:.4f}'.format(itr, -loss_meter.avg))
 
+            if args.visualize and (itr+1) % 1000 == 0:
+                with torch.no_grad():
+                    # sample from trajectorys' approx. posterior
+                    h = rec.initHidden().to(device)
+                    for t in reversed(range(samp_trajs.size(1))):
+                        obs = samp_trajs[:, t, :]
+                        out, h = rec.forward(obs, h)
+                    qz0_mean, qz0_logvar = out[:, :latent_dim], out[:, latent_dim:]
+                    epsilon = torch.randn(qz0_mean.size()).to(device)
+                    z0 = epsilon * torch.exp(.5 * qz0_logvar) + qz0_mean
+                    orig_ts = torch.from_numpy(orig_ts).float().to(device)
+
+                    # take first trajectory for visualization
+                    z0 = z0[0]
+
+                    ts_pos = np.linspace(0., 2. * np.pi, num=2000)
+                    ts_neg = np.linspace(-np.pi, 0., num=2000)[::-1].copy()
+                    ts_pos = torch.from_numpy(ts_pos).float().to(device)
+                    ts_neg = torch.from_numpy(ts_neg).float().to(device)
+
+                    zs_pos = odeint(func, z0, ts_pos)
+                    zs_neg = odeint(func, z0, ts_neg)
+
+                    xs_pos = dec(zs_pos)
+                    xs_neg = torch.flip(dec(zs_neg), dims=[0])
+
+                xs_pos = xs_pos.cpu().numpy()
+                xs_neg = xs_neg.cpu().numpy()
+                orig_traj = orig_trajs[0].cpu().numpy()
+                samp_traj = samp_trajs[0].cpu().numpy()
+
+                plt.figure()
+                plt.plot(orig_traj[:, 0], orig_traj[:, 1],
+                         'g', label='true trajectory')
+                plt.plot(xs_pos[:, 0], xs_pos[:, 1], 'r',
+                         label='learned trajectory (t>0)')
+                plt.plot(xs_neg[:, 0], xs_neg[:, 1], 'c',
+                         label='learned trajectory (t<0)')
+                plt.scatter(samp_traj[:, 0], samp_traj[
+                                             :, 1], label='sampled data', s=3)
+                plt.legend()
+                plt.savefig('./vis.png', dpi=500)
+                print('Saved visualization figure at {}'.format('./vis-{}.png'.format(itr)))
+
 
     except KeyboardInterrupt:
         if args.train_dir is not None:
